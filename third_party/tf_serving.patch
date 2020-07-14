@@ -1,0 +1,133 @@
+From 88b4cc9721126c68d0812eabe2b5340e94866086 Mon Sep 17 00:00:00 2001
+From: Zhuo Peng <1835738+brills@users.noreply.github.com>
+Date: Tue, 14 Jul 2020 14:15:59 -0700
+Subject: [PATCH 1/3] workspace fix
+
+---
+ tensorflow_serving/workspace.bzl | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git tensorflow_serving/workspace.bzl tensorflow_serving/workspace.bzl
+index b314e41f..d9e9a347 100644
+--- tensorflow_serving/workspace.bzl
++++ tensorflow_serving/workspace.bzl
+@@ -5,7 +5,7 @@ load("@org_tensorflow//third_party:repo.bzl", "tf_http_archive")
+ load("@org_tensorflow//tensorflow:workspace.bzl", "tf_workspace")
+ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+ 
+-def tf_serving_workspace():
++def tf_serving_workspace(tf_serving_repo_name = ""):
+     """All TensorFlow Serving external dependencies."""
+ 
+     tf_workspace(path_prefix = "", tf_repo_name = "org_tensorflow")
+@@ -31,7 +31,7 @@ def tf_serving_workspace():
+         ],
+         sha256 = "8e00c38829d6785a2dfb951bb87c6974fa07dfe488aa5b25deec4b8bc0f6a3ab",
+         strip_prefix = "rapidjson-1.1.0",
+-        build_file = "@//third_party/rapidjson:BUILD",
++        build_file = "@{}//third_party/rapidjson:BUILD".format(tf_serving_repo_name),
+     )
+ 
+     # ===== libevent (libevent.org) dependencies =====
+@@ -42,7 +42,7 @@ def tf_serving_workspace():
+         ],
+         sha256 = "70158101eab7ed44fd9cc34e7f247b3cae91a8e4490745d9d6eb7edc184e4d96",
+         strip_prefix = "libevent-release-2.1.8-stable",
+-        build_file = "@//third_party/libevent:BUILD",
++        build_file = "@{}//third_party/libevent:BUILD".format(tf_serving_repo_name),
+     )
+ 
+     # ===== Override TF defined `com_google_absl` (we need a recent version).
+@@ -66,8 +66,8 @@ def tf_serving_workspace():
+             "https://storage.googleapis.com/mirror.tensorflow.org/github.com/unicode-org/icu/archive/release-64-2.zip",
+             "https://github.com/unicode-org/icu/archive/release-64-2.zip",
+         ],
+-        build_file = "//third_party/icu:BUILD",
+-        patches = ["//third_party/icu:data.patch"],
++        build_file = "@{}//third_party/icu:BUILD".format(tf_serving_repo_name),
++        patches = ["@{}//third_party/icu:data.patch".format(tf_serving_repo_name)],
+         patch_args = ["-p1", "-s"],
+     )
+ 
+@@ -82,7 +82,7 @@ def tf_serving_workspace():
+         urls = [
+             "https://github.com/tensorflow/text/archive/v2.2.0.zip",
+         ],
+-        patches = ["@//third_party/tf_text:tftext.patch"],
++        patches = ["@{}//third_party/tf_text:tftext.patch".format(tf_serving_repo_name)],
+         patch_args = ["-p1"],
+         repo_mapping = {"@com_google_re2": "@com_googlesource_code_re2"},
+     )
+-- 
+2.27.0.389.gc38d7665816-goog
+
+
+From 2e0b3e0c7da842921f2565bb6748e948064e4125 Mon Sep 17 00:00:00 2001
+From: Zhuo Peng <1835738+brills@users.noreply.github.com>
+Date: Tue, 14 Jul 2020 14:23:49 -0700
+Subject: [PATCH 2/3] open visibility
+
+---
+ tensorflow_serving/model_servers/BUILD | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git tensorflow_serving/model_servers/BUILD tensorflow_serving/model_servers/BUILD
+index cda8cf1d..4385b94f 100644
+--- tensorflow_serving/model_servers/BUILD
++++ tensorflow_serving/model_servers/BUILD
+@@ -349,8 +349,7 @@ cc_library(
+     ],
+     linkstamp = "version.cc",
+     visibility = [
+-        ":tensorflow_model_server_custom_op_clients",
+-        "//tensorflow_serving:internal",
++        "//visibility:public",
+     ],
+     deps = [
+         ":server_lib",
+-- 
+2.27.0.389.gc38d7665816-goog
+
+
+From d7a8b360f90ac47dea294e6e70c055f5556eaadd Mon Sep 17 00:00:00 2001
+From: Zhuo Peng <1835738+brills@users.noreply.github.com>
+Date: Tue, 14 Jul 2020 15:28:26 -0700
+Subject: [PATCH 3/3] hack version.h
+
+---
+ tensorflow_serving/model_servers/BUILD     | 2 +-
+ tensorflow_serving/model_servers/version.h | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git tensorflow_serving/model_servers/BUILD tensorflow_serving/model_servers/BUILD
+index 4385b94f..288a9e39 100644
+--- tensorflow_serving/model_servers/BUILD
++++ tensorflow_serving/model_servers/BUILD
+@@ -343,11 +343,11 @@ cc_library(
+     name = "tensorflow_model_server_main_lib",
+     srcs = [
+         "main.cc",
++        "version.cc",
+     ],
+     hdrs = [
+         "version.h",
+     ],
+-    linkstamp = "version.cc",
+     visibility = [
+         "//visibility:public",
+     ],
+diff --git tensorflow_serving/model_servers/version.h tensorflow_serving/model_servers/version.h
+index 9010405a..6d895900 100644
+--- tensorflow_serving/model_servers/version.h
++++ tensorflow_serving/model_servers/version.h
+@@ -29,6 +29,7 @@ limitations under the License.
+ // (e.g. "-alpha", "-alpha.1", "-beta", "-rc", "-rc.1")
+ #define TF_MODELSERVER_VERSION_SUFFIX "-rc2"
+ 
++#define TF_MODELSERVER_VERSION_NO_META 1
+ #ifndef TF_MODELSERVER_VERSION_NO_META
+ // TF_MODELSERVER_BUILD_TAG can be set to be nightly for nightly builds
+ #ifndef TF_MODELSERVER_BUILD_TAG
+-- 
+2.27.0.389.gc38d7665816-goog
+
